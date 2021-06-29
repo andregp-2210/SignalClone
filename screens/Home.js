@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -12,9 +12,19 @@ import CustomListItem from "../components/CustomListItem";
 import { auth, db } from "../firebase";
 
 const Home = ({ navigation }) => {
+  const [chats, setChats] = useState([]);
   const signOutUser = () => {
     auth.signOut().then(() => navigation.replace("Login"));
   };
+  const enterChat = () => {};
+  useEffect(() => {
+    const unSubscribe = db
+      .collection("chats")
+      .onSnapshot((snapShot) =>
+        setChats(snapShot.docs.map((doc) => ({ id: doc.id, data: doc.data() })))
+      );
+    return unSubscribe;
+  }, []);
   useLayoutEffect(() => {
     navigation.setOptions({
       title: (
@@ -58,7 +68,10 @@ const Home = ({ navigation }) => {
           <TouchableOpacity activeOpacity={0.5}>
             <AntDesign name="camerao" size={24} color="black" />
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.5}>
+          <TouchableOpacity
+            activeOpacity={0.5}
+            onPress={() => navigation.navigate("AddChat")}
+          >
             <SimpleLineIcons name="pencil" size={24} color="black" />
           </TouchableOpacity>
         </View>
@@ -67,8 +80,15 @@ const Home = ({ navigation }) => {
   }, [navigation]);
   return (
     <SafeAreaView>
-      <ScrollView>
-        <CustomListItem />
+      <ScrollView style={styles.container}>
+        {chats.map(({ id, data: { chatName } }) => (
+          <CustomListItem
+            id={id}
+            chatName={chatName}
+            key={id}
+            enterChat={enterChat}
+          />
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -80,5 +100,9 @@ const styles = StyleSheet.create({
   headerTitleStyle: {
     maxWidth: 200,
     fontSize: 20,
+  },
+  container: {
+    height: "100%",
+    backgroundColor: "white",
   },
 });
