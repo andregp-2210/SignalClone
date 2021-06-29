@@ -16,7 +16,12 @@ const Home = ({ navigation }) => {
   const signOutUser = () => {
     auth.signOut().then(() => navigation.replace("Login"));
   };
-  const enterChat = () => {};
+  const enterChat = (id, chatName) => {
+    navigation.navigate("Chat", {
+      id,
+      chatName,
+    });
+  };
   useEffect(() => {
     const unSubscribe = db
       .collection("chats")
