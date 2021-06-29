@@ -12,10 +12,13 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
+import firebase from "firebase/app";
 import { Avatar } from "react-native-elements";
+import { db, auth } from "../firebase";
 
-const Chat = ({ navigation, route: { params } }) => {
+const Chat = ({ navigation, route }) => {
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "Chat",
@@ -43,7 +46,7 @@ const Chat = ({ navigation, route: { params } }) => {
               fontSize: 18,
             }}
           >
-            {params.chatName}
+            {route.params.chatName}
           </Text>
         </View>
       ),
@@ -74,7 +77,29 @@ const Chat = ({ navigation, route: { params } }) => {
       ),
     });
   }, [navigation]);
-  const sendMessage = () => {};
+  useLayoutEffect(() => {
+    const unSubscribe = db
+      .collection("chats")
+      .doc(route.params.id)
+      .collection("messages")
+      .orderBy("timestamp", "asc")
+      .onSnapshot((snapShot) =>
+        setMessages(
+          snapShot.docs.map((doc) => ({ id: doc.id, data: doc.data() }))
+        )
+      );
+    return unSubscribe;
+  }, [route]);
+  const sendMessage = () => {
+    db.collection("chats").doc(route.params.id).collection("messages").add({
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      message: input,
+      displayName: auth.currentUser.displayName,
+      email: auth.currentUser.email,
+      photoURL: auth.currentUser.photoURL,
+    });
+    setInput("");
+  };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <StatusBar style="light" />
@@ -84,16 +109,68 @@ const Chat = ({ navigation, route: { params } }) => {
         style={styles.container}
       >
         <>
-          <ScrollView></ScrollView>
+          <ScrollView
+            contentContainerStyle={{ paddingTop: 15, paddingBottom: 5 }}
+          >
+            {messages.map(({ id, data }) =>
+              data.email === auth.currentUser.email ? (
+                <View key={id} style={styles.reciever}>
+                  <Avatar
+                    source={{ uri: data.photoURL }}
+                    rounded
+                    // WEB
+                    containerStyle={{
+                      position: "absolute",
+                      bottom: -15,
+                      right: -5,
+                    }}
+                    position="absolute"
+                    size={30}
+                    bottom={-15}
+                    right={-5}
+                  />
+                  <Text style={styles.recieverText}>{data.message}</Text>
+                </View>
+              ) : (
+                <View key={id} style={styles.sender}>
+                  <Avatar
+                    source={{ uri: data.photoURL }}
+                    rounded
+                    // WEB
+                    containerStyle={{
+                      position: "absolute",
+                      bottom: -15,
+                      right: -5,
+                    }}
+                    position="absolute"
+                    size={30}
+                    bottom={-15}
+                    right={-5}
+                  />
+                  <Text style={styles.senderText}>{data.message}</Text>
+                  <Text style={styles.senderName}>{data.displayName}</Text>
+                </View>
+              )
+            )}
+          </ScrollView>
           <View style={styles.footer}>
             <TextInput
               placeholder="Enter a message"
               style={styles.textInput}
               value={input}
+              onSubmitEditing={sendMessage}
               onChangeText={(text) => setInput(text)}
             />
-            <TouchableOpacity activeOpacity={0.5} onPress={sendMessage}>
-              <Ionicons name="send" size={24} color="#2B68E6" />
+            <TouchableOpacity
+              activeOpacity={0.5}
+              onPress={sendMessage}
+              disabled={input.length === 0}
+            >
+              <Ionicons
+                name="send"
+                size={24}
+                color={input.length === 0 ? "lightgray" : "#2B68E6"}
+              />
             </TouchableOpacity>
           </View>
         </>
@@ -107,6 +184,38 @@ export default Chat;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  reciever: {
+    padding: 15,
+    backgroundColor: "#ECECEC",
+    alignSelf: "flex-end",
+    borderRadius: 20,
+    marginRight: 15,
+    marginBottom: 20,
+    maxWidth: "80%",
+    position: "relative",
+  },
+  recieverText: {
+    color: "black",
+    fontWeight: "500",
+    marginLeft: 10,
+  },
+  sender: {
+    padding: 15,
+    backgroundColor: "#2B68E6",
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    marginRight: 15,
+    marginBottom: 20,
+    maxWidth: "80%",
+    position: "relative",
+  },
+  senderName: { left: 10, paddingRight: 10, fontSize: 10, color: "white" },
+  senderText: {
+    color: "white",
+    fontWeight: "500",
+    marginLeft: 10,
+    marginBottom: 15,
   },
   footer: {
     flexDirection: "row",
